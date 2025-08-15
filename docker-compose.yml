@@ -1,0 +1,71 @@
+version: '3'
+
+services:
+  # Banco de dados PostgreSQL
+  db:
+    image: postgres:13
+    container_name: assistencia-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=assistencia_tecnica
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  # Redis para cache e filas
+  redis:
+    image: redis:alpine
+    container_name: assistencia-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  # API Evolution para WhatsApp
+  evolution-api:
+    image: evolutionapi/evolution:latest
+    container_name: evolution-api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://evolution-api:8080
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=sua_chave_api_aqui
+      - LOG_LEVEL=info
+    volumes:
+      - evolution-data:/app/instances
+
+  # n8n para automação de fluxos
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_ENCRYPTION_KEY=sua_chave_encriptacao_aqui
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n_db
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD=postgres
+      - WEBHOOK_URL=http://n8n:5678
+    volumes:
+      - n8n-data:/home/node/.n8n
+    depends_on:
+      - db
+
+volumes:
+  postgres-data:
+  redis-data:
+  evolution-data:
+  n8n-data:
